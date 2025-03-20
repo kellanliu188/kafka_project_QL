@@ -3,52 +3,72 @@ import psycopg2
 from kafka import KafkaProducer
 import time
 
-# Kafka Configuration
-KAFKA_BROKER = "localhost:29092"
-TOPIC_NAME = "employee_changes"
+class KafkaCDCProducer:
+    """
+    Kafka CDC Producer that fetches changes from PostgreSQL 'emp_cdc' table
+    and sends them to a Kafka topic.
+    """
 
-# PostgreSQL Connection
-DB_PARAMS = {
-    "dbname": "postgres",
-    "user": "postgres",
-    "password": "postgres",
-    "host": "localhost",
-    "port": "5434"
-}
+    def __init__(self, kafka_broker="localhost:29092", topic_name="employee_changes", db_params=None, poll_interval=5):
+        """Initialize Kafka Producer and PostgreSQL connection."""
+        if db_params is None:
+            db_params = {
+                "dbname": "postgres",
+                "user": "postgres",
+                "password": "postgres",
+                "host": "localhost",
+                "port": "5434"
+            }
 
-# Initialize Kafka Producer
-producer = KafkaProducer(
-    bootstrap_servers=KAFKA_BROKER,
-    value_serializer=lambda v: json.dumps(v).encode('utf-8')
-)
+        self.kafka_broker = kafka_broker
+        self.topic_name = topic_name
+        self.db_params = db_params
+        self.poll_interval = poll_interval
 
-def fetch_changes():
-    """ Fetches new rows from emp_cdc and sends them to Kafka """
-    conn = psycopg2.connect(**DB_PARAMS)
-    cur = conn.cursor()
+        # Initialize Kafka Producer
+        self.producer = KafkaProducer(
+            bootstrap_servers=self.kafka_broker,
+            value_serializer=lambda v: json.dumps(v).encode("utf-8")
+        )
 
-    cur.execute("SELECT * FROM emp_cdc")
-    rows = cur.fetchall()
+    def fetch_changes(self):
+        """Fetches new rows from emp_cdc and sends them to Kafka."""
+        try:
+            conn = psycopg2.connect(**self.db_params)
+            cur = conn.cursor()
 
-    for row in rows:
-        emp_data = {
-            "emp_id": row[0],
-            "first_name": row[1],
-            "last_name": row[2],
-            "dob": str(row[3]),
-            "city": row[4],
-            "action": row[5]
-        }
+            cur.execute("SELECT * FROM emp_cdc")
+            rows = cur.fetchall()
 
-        producer.send(TOPIC_NAME, emp_data)
+            for row in rows:
+                emp_data = {
+                    "emp_id": row[0],
+                    "first_name": row[1],
+                    "last_name": row[2],
+                    "dob": str(row[3]),
+                    "city": row[4],
+                    "action": row[5]
+                }
 
-        # Mark row as processed
-        cur.execute("DELETE FROM emp_cdc WHERE emp_id = %s", (row[0],))
+                self.producer.send(self.topic_name, emp_data)
 
-    conn.commit()
-    cur.close()
-    conn.close()
+                # Mark row as processed by deleting it
+                cur.execute("DELETE FROM emp_cdc WHERE emp_id = %s", (row[0],))
 
-while True:
-    fetch_changes()
-    time.sleep(5)  # Poll every 5 seconds
+            conn.commit()
+            cur.close()
+            conn.close()
+
+        except psycopg2.DatabaseError as e:
+            print(f"Database error: {e}")
+
+    def run(self):
+        """Continuously fetch changes and send them to Kafka."""
+        print(f"Kafka Producer for topic '{self.topic_name}' started...")
+        while True:
+            self.fetch_changes()
+            time.sleep(self.poll_interval)
+
+if __name__ == "__main__":
+    producer = KafkaCDCProducer()
+    producer.run()
