@@ -23,7 +23,7 @@ class CDCClient(AdminClient):
                 future.result()  # The result itself is None
                 print(f"Topic '{topic}' created with {num_partitions} partitions.")
             except Exception as e:
-                print(f"❌ Failed to create topic '{topic}': {e}")
+                print(f"Failed to create topic '{topic}': {e}")
 
     def delete_topic(self, topics):
         """Delete the specified Kafka topic(s)."""
@@ -32,9 +32,9 @@ class CDCClient(AdminClient):
         for topic, future in fs.items():
             try:
                 future.result()  # The result itself is None
-                print(f"🗑️ Topic '{topic}' deleted successfully.")
+                print(f"Topic '{topic}' deleted successfully.")
             except Exception as e:
-                print(f"❌ Failed to delete topic '{topic}': {e}")
+                print(f"Failed to delete topic '{topic}': {e}")
 
 if __name__ == "__main__":
     client = CDCClient()
