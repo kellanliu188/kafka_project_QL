@@ -19,17 +19,30 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
-  db:
+  db_source:
     image: postgres:14.1-alpine
     restart: always
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
     ports:
-      - '5433:5432'
+      - '5434:5432'
     volumes:
-      - db:/var/lib/postgresql/data
+      - db_source:/var/lib/bf_kafka_proj2_source/data
+
+  db_dst:
+    image: postgres:14.1-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - '5435:5432'
+    volumes:
+      - db_dst:/var/lib/bf_kafka_proj2_dst/data
 
 volumes:
-  db:
+  db_source:
+    driver: local
+  db_dst:
     driver: local
