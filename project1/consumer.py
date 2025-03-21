@@ -67,7 +67,7 @@ class KafkaDatabaseConsumer:
 
             # Check if no messages received within the timeout
             if time.time() - last_message_time > timeout:
-                print("⏳ No messages received in the last 5 seconds.")
+                print("No messages received in the last 5 seconds.")
 
         print("Finished consuming messages.")
         self.cur.close()
